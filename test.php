@@ -1,2 +1,3 @@
 <?php
-file new1
+echo "Test file";
+?>

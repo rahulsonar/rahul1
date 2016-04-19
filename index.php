@@ -1,6 +1,6 @@
 <?php
-E
-aaa
+
+
 ?>
 
 Abb

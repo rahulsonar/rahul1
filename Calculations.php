@@ -5,4 +5,9 @@ class Calculations
 	{
 		return $a+$b;
 	}
+
+	function subtract($a,$b)
+	{
+		return $a-$b;
+	}
 }

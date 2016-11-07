@@ -10,4 +10,9 @@ class Calculations
 	{
 		return $a-$b;
 	}
+
+	function m($a,$b)
+	{
+		return $a*$b;
+	}
 }

@@ -11,7 +11,7 @@ class Calculations
 		return $a-$b;
 	}
 
-	function m($a,$b)
+	function multi($a,$b)
 	{
 		return $a*$b;
 	}

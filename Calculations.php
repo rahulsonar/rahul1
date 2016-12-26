@@ -6,4 +6,14 @@ class Calculations
 		$c= $a*$b;
 		return $c;
 	}
+
+	function subtract($a,$b)
+	{
+		return $a-$b;
+	}
+
+	function m($a,$b)
+	{
+		return $a*$b;
+	}
 }

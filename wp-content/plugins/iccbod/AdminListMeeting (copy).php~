@@ -1,0 +1,671 @@
+<?php
+
+require_once( plugin_dir_path(__FILE__) . 'classes/AdminListTable.php' );
+require_once( plugin_dir_path(__FILE__) . 'models/Meeting.php' );
+require_once( plugin_dir_path(__FILE__) . 'valitrono/src/valitron/validator.php' );
+
+class AdminListMeeting extends AdminListTable {
+
+    var $example_data = array();
+
+    /**
+     * Class Constructor
+     */
+    public function __construct() {
+        global $status, $page, $pagenow;
+
+        //Set parent defaults
+        parent::__construct(array(
+            'singular' => 'meeting', //singular name of the listed records
+            'plural' => 'meetings', //plural name of the listed records
+            'ajax' => false        //does this table support ajax?
+        ));
+    }
+
+    /**
+     * Default columns settings
+     * 
+     */
+    function column_default($item, $column_name) {
+        switch ($column_name) {
+            case 'meet_title':
+            case 'meet_image':
+            case 'meet_start_date':
+            case 'meet_end_date':
+            case 'meet_location':
+                return $item[$column_name];
+            default:
+                return print_r($item, true); //Show the whole array for troubleshooting purposes
+        }
+    }
+
+    /**
+     * Build row actions
+     *  
+     */
+    function column_title($item) {
+
+        //Build row actions
+        $actions = array(
+            'edit' => sprintf('<a href="?page=%s&action=%s&meeting=%s">Edit</a>', $_REQUEST['page'], 'edit', $item['meet_id']),
+            'delete' => sprintf('<a href="?page=%s&action=%s&meeting=%s">Delete</a>', $_REQUEST['page'], 'delete', $item['meet_id']),
+        );
+
+        //Return the title contents
+        return sprintf('%1$s <span style="color:silver">(id:%2$s)</span>%3$s',
+                /* $1%s */ $item['meet_title'],
+                /* $2%s */ $item['meet_id'],
+                /* $3%s */ $this->row_actions($actions)
+        );
+    }
+
+    /**
+     * Bulk check-box column callback
+     */
+    function column_cb($item) {
+        return sprintf(
+                '<input type="checkbox" name="%1$s[]" value="%2$s" />',
+                /* $1%s */ $this->_args['singular'], //Let's simply repurpose the table's singular label ("movie")
+                /* $2%s */ $item['meet_id']                //The value of the checkbox should be the record's id
+        );
+    }
+
+    /**
+     * define columns of the list table
+     */
+    function get_columns() {
+        $columns = array(
+            'cb' => '<input type="checkbox" />', //Render a checkbox instead of text
+            'meet_title' => 'Title',
+            'meet_image' => 'Image',
+            'meet_start_date' => 'Start Date',
+            'meet_end_date' => 'End Date',
+            'meet_location' => 'Location'
+        );
+        return $columns;
+    }
+
+    /**
+     * Define sortable columns 
+     */
+    function get_sortable_columns() {
+        $sortable_columns = array(
+            'meet_title' => array('meet_title', false), //true means it's already sorted
+            'meet_start_date' => array('meet_start_date', false),
+            'meet_end_date' => array('meet_end_date', false),
+            'meet_location' => array('meet_location', false)
+        );
+        return $sortable_columns;
+    }
+
+    /**
+     * Define bulk actions
+     */
+    function get_bulk_actions() {
+        $actions = array(
+            'delete' => 'Delete'
+        );
+        return $actions;
+    }
+
+    /**
+     * Process bulk actions
+     */
+    function process_bulk_action() {
+
+        //Detect when a bulk action is being triggered...
+        if ('delete' === $this->current_action()) {
+            echo "<pre>";
+            print_r($_REQUEST);
+            echo "</pre>";
+
+            wp_die('Items deleted (or they would be if we had items to delete)!');
+        }
+    }
+
+    /**     * ***********************************************************************
+     * REQUIRED! This is where you prepare your data for display. This method will
+     * usually be used to query the database, sort and filter the data, and generally
+     * get it ready to be displayed. At a minimum, we should set $this->items and
+     * $this->set_pagination_args(), although the following properties and methods
+     * are frequently interacted with here...
+     * 
+     * @global WPDB $wpdb
+     * @uses $this->_column_headers
+     * @uses $this->items
+     * @uses $this->get_columns()t
+     * @uses $this->get_sortable_columns()
+     * @uses $this->get_pagenum()
+     * @uses $this->set_pagination_args()
+     * ************************************************************************ */
+    function prepare_items() {
+
+        global $wpdb; //This is used only if making any database queries
+
+        /**
+         * First, lets decide how many records per page to show
+         */
+        $per_page = 10;
+
+        /**
+         * REQUIRED. Now we need to define our column headers. This includes a complete
+         * array of columns to be displayed (slugs & titles), a list of columns
+         * to keep hidden, and a list of columns that are sortable. Each of these
+         * can be defined in another method (as we've done here) before being
+         * used to build the value for our _column_headers property.
+         */
+        $columns = $this->get_columns();
+        $hidden = array();
+        $sortable = $this->get_sortable_columns();
+
+
+        /**
+         * REQUIRED. Finally, we build an array to be used by the class for column 
+         * headers. The $this->_column_headers property takes an array which contains
+         * 3 other arrays. One for all columns, one for hidden columns, and one
+         * for sortable columns.
+         */
+        $this->_column_headers = array($columns, $hidden, $sortable);
+
+
+        /**
+         * Optional. You can handle your bulk actions however you see fit. In this
+         * case, we'll handle them within our package just to keep things clean.
+         */
+        $this->process_bulk_action();
+
+
+        /**
+         * Instead of querying a database, we're going to fetch the example data
+         * property we created for use in this plugin. This makes this example 
+         * package slightly different than one you might build on your own. In 
+         * this example, we'll be using array manipulation to sort and paginate 
+         * our data. In a real-world implementation, you will probably want to 
+         * use sort and pagination data to build a custom query instead, as you'll
+         * be able to use your precisely-queried data immediately.
+         */
+        //get data from db
+        global $wpdb;
+//        $query = "SELECT emp_no as ID, first_name as title, gender as rating, last_name as director FROM " . $wpdb->prefix . "employees";
+        $query = "SELECT * FROM " . $wpdb->prefix . "meetings";
+//        if (isset($_GET['cat-filter']) > 0) {
+//            $query .= ' WHERE first_name="' . $_GET['cat-filter'] . '"';
+//        }
+
+
+        $this->example_data = $wpdb->get_results($query, ARRAY_A);
+        
+//        echo "<pre>";
+//        print_r($this->example_data);
+//        echo "</pre>";
+//        die();
+
+
+        $data = $this->example_data;
+
+        /**
+         * This checks for sorting input and sorts the data in our array accordingly.
+         * 
+         * In a real-world situation involving a database, you would probably want 
+         * to handle sorting by passing the 'orderby' and 'order' values directly 
+         * to a custom query. The returned data will be pre-sorted, and this array
+         * sorting technique would be unnecessary.
+         */
+        function usort_reorder($a, $b) {
+            $orderby = (!empty($_REQUEST['orderby'])) ? $_REQUEST['orderby'] : 'meet_id'; //If no sort, default to title
+            $order = (!empty($_REQUEST['order'])) ? $_REQUEST['order'] : 'asc'; //If no order, default to asc
+            $result = strcmp($a[$orderby], $b[$orderby]); //Determine sort order
+            return ($order === 'asc') ? $result : -$result; //Send final sort direction to usort
+        }
+
+        usort($data, 'usort_reorder');
+
+        /**
+         * REQUIRED for pagination. Let's figure out what page the user is currently 
+         * looking at. We'll need this later, so you should always include it in 
+         * your own package classes.
+         */
+        $current_page = $this->get_pagenum();
+
+        /**
+         * REQUIRED for pagination. Let's check how many items are in our data array. 
+         * In real-world use, this would be the total number of items in your database, 
+         * without filtering. We'll need this later, so you should always include it 
+         * in your own package classes.
+         */
+        $total_items = count($data);
+
+
+        /**
+         * The AdminListTable class does not handle pagination for us, so we need
+         * to ensure that the data is trimmed to only the current page. We can use
+         * array_slice() to 
+         */
+        $data = array_slice($data, (($current_page - 1) * $per_page), $per_page);
+
+
+        /**
+         * REQUIRED. Now we can add our *sorted* data to the items property, where 
+         * it can be used by the rest of the class.
+         */
+        $this->items = $data;
+
+
+        /**
+         * REQUIRED. We also have to register our pagination options & calculations.
+         */
+        $this->set_pagination_args(array(
+            'total_items' => $total_items, //WE have to calculate the total number of items
+            'per_page' => $per_page, //WE have to determine how many items to show on a page
+            'total_pages' => ceil($total_items / $per_page)   //WE have to calculate the total number of pages
+        ));
+    }
+
+    /**
+     * Adding custom filter for filtering results
+     */
+    public function extra_tablenav($which) {
+        global $wpdb;
+        $move_on_url = '&cat-filter=';
+        if ($which == "top") {
+            ?>
+            <div class="alignleft actions bulkactions">
+                <?php
+                $cats = array(
+                    array(
+                        'id' => 'Aamer',
+                        'title' => 'Aamer'
+                    ),
+                    array(
+                        'id' => 'Aamod',
+                        'title' => 'Aamod'
+                    ),
+                    array(
+                        'id' => 'test',
+                        'title' => 'test'
+                    )
+                );
+                if ($cats) {
+                    ?>
+                    <select name="cat-filter" class="ewc-filter-cat">
+                        <option value="">Filter by Category</option>
+                        <?php
+                        foreach ($cats as $cat) {
+                            $selected = '';
+                            if ($_GET['cat-filter'] == $cat['id']) {
+                                $selected = ' selected = "selected"';
+                            }
+                            ?>
+                            <option value="<?php echo $cat['id']; ?>" <?php echo $selected; ?>><?php echo $cat['title']; ?></option>
+                            <?php
+                        }
+                        ?>
+                    </select>
+
+                    <?php
+                    submit_button(__('Filter'), 'button', 'filter_action', false, array('id' => 'post-query-submit'));
+                }
+                ?>  
+            </div>
+            <?php
+        }
+    }
+
+}
+
+/**
+ * Register admin menu pages
+ */
+function meeting_menu_items() {
+    add_menu_page('Meetings', 'Meetings', 'activate_plugins', 'meeting_tt_list', 'meeting_render_list_page');
+    add_submenu_page('meeting_tt_list', 'Calendar', 'Calendar', 'activate_plugins', 'meeting-cal', 'meeting_calendar');
+    add_submenu_page('meeting_tt_list', 'Settings', 'Settings', 'activate_plugins', 'meeting-settings', 'meeting_settings');
+
+
+    //Meeting CRUD 
+    add_submenu_page('', 'Add New Meeting', 'Add New Meeting', 'activate_plugins', 'meeting-add-new', 'meeting_add_callback');
+    add_submenu_page('', 'Edit Meeting', 'Edit Meeting', 'activate_plugins', 'meeting-edit', 'meeting_edit_callback');
+}
+
+add_action('admin_menu', 'meeting_menu_items');
+
+/**
+ * Meeting Add CallBack
+ */
+function meeting_add_callback() {
+    ?>
+    <div class="wrap">
+        <h1 id="add-new-user">Add New Meeting</h1>
+        <!--<p>Create a meeting.</p>-->
+        <form id="createmeetingform" action="" class="form-horizontal" method="post" enctype="multipart/form-data">
+            <table class="form-table">
+                <input type="hidden" name="_wpnonce" value="<?php echo wp_create_nonce('addmeeting'); ?>">
+                <input type="hidden" name="action" value="addmeeting">
+                <tbody>
+                    <tr class="form-field form-required">
+                        <th scope="row"><label for="meet_title" class="dashicons-before dashicons-admin-post"> Title <span class="description">(required)</span></label></th>
+                        <td><input name="meet_title" type="text" id="meet_title" maxlength="60" data-bvalidator="required"></td>
+                    </tr>
+                    <tr class="form-field">
+                        <th scope="row"><label for="bio" class="dashicons-before dashicons-admin-page"> Description <span class="description">(required)</span></label></th>
+                        <td><textarea name="meet_description" id="meet_description" rows="10" cols="30" data-bvalidator="required, maxlength[800]"></textarea></td>
+                    </tr> 
+                    <tr class="form-field form-required">
+                        <th scope="row"><label for="meet_start_date" class="dashicons-before dashicons-calendar-alt"> Start Date <span class="description">(required)</span></label></th>
+                        <td><input name="meet_start_date" type="text" id="meet_start_date" data-bvalidator="required"></td>
+                    </tr>
+                    <tr class="form-field form-required">
+                        <th scope="row"><label for="meet_start_time" class="dashicons-before dashicons-clock"> Start Time <span class="description">(required)</span></label></th>
+                        <td><input name="meet_start_time" type="text" id="meet_start_time" data-bvalidator="required"></td>
+                    </tr>
+                    <tr class="form-field">
+                        <th scope="row"><label for="meet_end_date" class="dashicons-before dashicons-calendar-alt"> End Date <span class="description">(required)</span></label></th>
+                        <td><input name="meet_end_date" type="text" id="meet_end_date" data-bvalidator="required"></td>
+                    </tr>
+                    <tr class="form-field">
+                        <th scope="row"><label for="meet_end_time" class="dashicons-before dashicons-clock"> End Time <span class="description">(required)</span></label></th>
+                        <td><input name="meet_end_time" type="text" id="meet_end_time" data-bvalidator="required"></td>
+                    </tr>
+                    <tr class="form-field">
+                        <th scope="row"><label for="meet_location" class="dashicons-before dashicons-location"> Location <span class="description">(required)</span></label></th>
+                        <td>
+                            <input name="meet_location" type="text" id="meet_location" data-bvalidator="required">
+                            <input name="meet_lat" type="hidden" id="meet_lat">
+                            <input name="meet_long" type="hidden" id="meet_long">
+                        </td>
+                    </tr>
+                    <tr class="form-field">
+                        <th scope="row"><label for="meet_image" class="dashicons-before dashicons-format-image"> Image <span class="description">(required)</span></label></th>
+                        <td>
+                            <input name="meet_image" type="file" id="meet_image" data-bvalidator="required">
+                        </td>
+                    </tr>
+                    <tr class="form-field">
+                        <th scope="row"><label for="meet_category" class="dashicons-before dashicons-admin-generic">Category <span class="description">(required)</span></label></th>
+                        <td><select name="meet_category[]" class="chosen-select" id="meet_category" data-bvalidator="required" multiple>
+                                <option value="subscriber">Subscriber</option>
+                                <option value="contributor">Contributor</option>
+                                <option value="author">Author</option>
+                                <option value="editor">Editor</option>
+                                <option value="administrator">Administrator</option>			
+                            </select>
+                        </td>
+                    </tr>
+                </tbody></table>
+            <p class="submit"><input type="submit" id="createmeeting" class="button button-primary" value="Add New Meeting"></p>
+        </form>
+        <script type="text/javascript">
+            jQuery(document).ready(function ($) {
+
+                //chosen
+                jQuery("select").chosen({
+                    'width': '95%',
+                    'white-space': 'nowrap',
+                    disable_search_threshold: 6
+                });
+
+                $('#meet_start_time, #meet_end_time').timepicker({
+                    timeFormat: "hh:mm tt"
+                });
+
+                var dateFormat = "yy-mm-dd",
+                        from = $("#meet_start_date")
+                        .datepicker({
+                            defaultDate: "+1w",
+                            changeMonth: true,
+                            numberOfMonths: 1,
+                            dateFormat: dateFormat
+                        })
+                        .on("change", function () {
+                            to.datepicker("option", "minDate", getDate(this));
+                        }),
+                        to = $("#meet_end_date").datepicker({
+                    defaultDate: "+1w",
+                    changeMonth: true,
+                    numberOfMonths: 1,
+                    dateFormat: dateFormat
+                })
+                        .on("change", function () {
+                            from.datepicker("option", "maxDate", getDate(this));
+                        });
+
+                function getDate(element) {
+                    var date;
+                    try {
+                        date = $.datepicker.parseDate(dateFormat, element.value);
+                    } catch (error) {
+                        date = null;
+                    }
+
+                    return date;
+                }
+
+                jQuery('#createmeetingform').bValidator({
+                    validateOn: "keyup",
+                    position: {x: 'left', y: 'top'},
+                    validateTillInvalid: true,
+                    offset: {x: 0, y: 0}
+                });
+
+                jQuery('#createmeetingform').on('submit', function (e) {
+                    e.preventDefault();
+                    if (jQuery('#createmeetingform').data('bValidator').validate()) {
+
+                        var data = new FormData(jQuery('#createmeetingform')[0]);
+
+                        $.ajax({
+                            type: "post",
+                            contentType: false,
+                            processData: false,
+                            url: ajaxurl,
+                            dataType: "json",
+                            data: data,
+                            success: function (r) {
+                                // This outputs the result of the ajax request
+                                console.log(r);
+
+                                if (r[0] === 'true') {
+                                    var notifyclass = 'growl-black';
+                                    $.gritter.add({
+                                        title: 'Success',
+                                        text: r[1],
+                                        class_name: notifyclass,
+                                        image: '<?php echo plugin_dir_url(__FILE__) . "images/alert.png"; ?>',
+                                        sticky: false,
+                                        time: ''
+                                    });
+
+                                } else {
+
+                                    console.log(r);
+
+                                    var notifyclass = 'growl-black';
+                                    //Gritter in action
+                                    if (r[1].constructor === Array) {
+                                        for (p = 0; p < r[1].length; p++) {
+                                            $.gritter.add({
+                                                title: 'There is a problem!',
+                                                text: r[1][p][0],
+                                                class_name: notifyclass,
+                                                image: '<?php echo plugin_dir_url(__FILE__) . "images/alert.png"; ?>',
+                                                sticky: false,
+                                                time: ''
+                                            });
+
+                                            $('#createmeetingform').data('bValidators').first.showMsg(jQuery('#' + r[1][p][1]), r[1][p][0]);
+                                        }
+                                    } else {
+
+                                        $.gritter.add({
+                                            title: 'There is a problem!',
+                                            text: r[1],
+                                            class_name: notifyclass,
+                                            image: '<?php echo plugin_dir_url(__FILE__) . "images/alert.png"; ?>',
+                                            sticky: false,
+                                            time: ''
+                                        });
+                                    }
+                                }
+                            },
+                            error: function (errorThrown) {
+                                console.log(errorThrown);
+                            }
+                        });
+                    } else {
+
+                    }
+                });
+
+
+            });
+        </script>
+    </div>
+    <?php
+}
+
+/**
+ * Edit meeting
+ */
+function meeting_edit_callback() {
+    echo "<pre>";
+    print_r('edit meeting callback');
+    echo "</pre>";
+    die();
+}
+
+/**
+ * Meeting calendar
+ */
+function meeting_calendar() {
+    echo '<div class="wrap"><div id="icon-options-general" class="icon32"><br></div>
+                <h2>Meeting Calendar</h2><div id="calendar" style="background:#fff;padding:10px;margin-top:10px;">
+                </div></div>';
+    ?>
+    <script type="text/javascript">
+        jQuery(document).ready(function ($) {
+            $('#calendar').fullCalendar({
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,agendaWeek,agendaDay'
+                },
+                defaultDate: moment().format('YYYY-MM-DD'),
+                defaultView: 'month',
+                editable: false,
+                eventRender: function (event, element) {
+                    element.qtip({
+                        content: {
+                            title: {text: event.title},
+                            text: '<img src="https://www.google.co.in/images/branding/googlelogo/2x/googlelogo_color_120x44dp.png" style="width:150px;"><br><span class="title">Start: </span>' + (moment(event.start).format('MM/DD/YYYY hh:mm')) + '<br><br><span class="title">Title: </span>' + event.content
+                        },
+                        show: {solo: true},
+                        //hide: { when: 'inactive', delay: 3000 }, 
+                        style: {
+                            width: 200,
+                            padding: 5,
+                            color: 'black',
+                            textAlign: 'left',
+                            border: {
+                                width: 1,
+                                radius: 3
+                            },
+                            tip: 'topLeft',
+                            classes: 'qtip-tipsy'
+                        }
+                    });
+                },
+                eventClick: function (calEvent, jsEvent, view) {
+                    //replace calEvent.url
+                    window.location.href = 'http://www.google.com';
+                },
+                events: [
+                    {
+                        title: 'All Day Event',
+                        content: 'This is content of event',
+                        start: '2016-12-01'
+                    },
+                    {
+                        title: 'Long Event',
+                        content: 'This is content of event',
+                        start: '2014-06-07',
+                        end: '2016-12-10'
+                    },
+                    {
+                        id: 999,
+                        title: 'Repeating Event',
+                        content: 'This is content of event',
+                        start: '2016-12-09T16:00:00'
+                    },
+                    {
+                        id: 999,
+                        title: 'Repeating Event',
+                        content: 'This is content of event',
+                        start: '2016-12-16T16:00:00'
+                    },
+                    {
+                        title: 'Meeting',
+                        content: 'This is content of event',
+                        start: '2016-12-12T10:30:00',
+                        end: '2016-12-12T12:30:00'
+                    },
+                    {
+                        title: 'Lunch',
+                        content: 'This is content of event',
+                        start: '2016-12-12T12:00:00'
+                    },
+                    {
+                        title: 'Birthday Party',
+                        content: 'This is content of event',
+                        start: '2016-12-13T07:00:00'
+                    },
+                    {
+                        title: 'Click for Google',
+                        content: 'This is content of event',
+                        url: 'http://google.com/',
+                        start: '2016-12-28'
+                    }
+                ],
+                eventColor: '#23282d'
+            });
+        });
+    </script>
+    <?php
+}
+
+/*
+ * Meeting Settings
+ */
+
+function meeting_settings() {
+    echo '<div class="wrap"><div id="icon-options-general" class="icon32"><br></div>
+                <h2>Settings</h2></div>';
+}
+
+/*
+ * Meetings Admin Listings
+ */
+
+function meeting_render_list_page() {
+
+    //Create an instance of our package class...
+    $testListTable = new AdminListMeeting();
+    //Fetch, prepare, sort, and filter our data...
+    $testListTable->prepare_items();
+    ?>
+    <div class="wrap">
+
+        <div id="icon-users" class="icon32"><br/></div>
+        <!--<h2>Meetings <a href="?page=meeting_tt_list&action=new" class="page-title-action">Add New</a></h2>-->
+        <h2>Meetings <a href="<?php menu_page_url('meeting-add-new', true); ?>" class="page-title-action">Add New</a></h2>
+
+        <!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
+        <form id="movies-filter" method="get">
+            <!-- For plugins, we also need to ensure that the form posts back to our current page -->
+            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+            <!-- Now we can render the completed list table -->
+            <?php $testListTable->display() ?>
+        </form>
+
+    </div>
+    <?php
+}

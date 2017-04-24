@@ -8,8 +8,8 @@
   <property name="builddir" value="${workspace}/build" />
   <property environment="env"/>
   <target name="build"
-  depends="prepare,vendors,lint,phpcpd,deploy"/>
-  <target name="build-parallel" depends="prepare,lint,tools-parallel,deploy"/>
+  depends="prepare,vendors,lint,phpcpd,phpunit,deploy"/>
+  <target name="build-parallel" depends="prepare,lint,tools-parallel,phpunit,deploy"/>
 
   <target name="tools-parallel" description="Run tools in parallel">
     <parallel threadCount="2">
@@ -41,7 +41,12 @@
     </apply>
   </target>
   
-  
+  <target name="phpunit" depends="testdataSetup" description="Run unit tests with PHPUnit">
+    <exec executable="/usr/local/bin/phpunit" failonerror="true">
+      <arg value="-c" />
+      <arg path="${basedir}/phpunit.xml" />
+    </exec>
+  </target>
   <target name="phpcpd" description="Find duplicate code using PHPCPD">
     <exec executable="/usr/local/bin/phpcpd">
       <arg value="--log-pmd" />
@@ -61,7 +66,7 @@
    <get src="http://getcomposer.org/composer.phar" dest="${composer.path}" />
     <chmod file="${composer.path}" perm="775" />
   </target>
-<target name="deploy">
+<target name="deploy" depends="phpunit">
     <echo message="Running deploy" />
     <exec dir="/var/lib/jenkins/deployer/redsquare/${env.instance}" executable="/usr/local/bin/dep" failonerror="true">
             <arg value="deploy"/>

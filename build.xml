@@ -34,7 +34,7 @@
    <target name="lint" description="Perform syntax check of sourcecode files">
     <apply executable="php" failonerror="true">
     <arg value="-l" />
-    <fileset dir="${sourcedir}/app">
+    <fileset dir="${sourcedir}">
       <include name="**/*.php" />
       <modified />
     </fileset>
@@ -46,7 +46,7 @@
     <exec executable="/usr/local/bin/phpcpd">
       <arg value="--log-pmd" />
       <arg value="${builddir}/logs/pmd-cpd.xml" />
-      <arg path="${sourcedir}/app" />
+      <arg path="${sourcedir}" />
     </exec>
   </target>
 

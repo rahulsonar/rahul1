@@ -11,9 +11,9 @@
          convertWarningsToExceptions="false"
 		 verbose="true">
     <testsuites>
-        <testsuite name="unittest">
-            <directory>unittest</directory>
-            <file>unittest/TestModel.php</file>
+        <testsuite name="unittests">
+            <directory>unittests</directory>
+            <file>unittests/TestModel.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

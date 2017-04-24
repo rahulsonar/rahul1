@@ -13,7 +13,7 @@
     <testsuites>
         <testsuite name="unittest">
             <directory>unittest</directory>
-            <file>unittest/TestMeeting.php</file>
+            <file>unittest/TestModel.php</file>
         </testsuite>
     </testsuites>
 </phpunit>

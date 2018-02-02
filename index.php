@@ -1,5 +1,4 @@
 <?php
-
 require_once 'classes/modelClass.php';
 
 $model=new modelClass();
